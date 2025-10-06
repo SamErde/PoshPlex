@@ -1,7 +1,7 @@
-[cmdletbinding(DefaultParameterSetName = 'Task')]
+[CmdletBinding(DefaultParameterSetName = 'Task')]
 param(
     # Build task(s) to execute
-    [parameter(ParameterSetName = 'task', position = 0)]
+    [parameter(ParameterSetName = 'Task', position = 0)]
     [ArgumentCompleter( {
         param($Command, $Parameter, $WordToComplete, $CommandAst, $FakeBoundParams)
         $psakeFile = './psakeFile.ps1'

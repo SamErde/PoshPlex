@@ -28,4 +28,3 @@
 <!--- Include as many relevant details about the environment you experienced the bug in -->
 * Module version used:
 * Operating System and PowerShell version:
-

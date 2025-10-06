@@ -20,15 +20,15 @@ I want to know what you think is missing from PoshPlex and how it can be made be
 ## Making Changes
 
 - From your fork of the repository, create a topic branch where work on your change will take place.
-- To quickly create a topic branch based on master; `git checkout -b my_contribution master`.
-  Please avoid working directly on the `master` branch.
+- To quickly create a topic branch based on main; `git checkout -b my_contribution main`.
+  Please avoid working directly on the `main` branch.
 - Make commits of logical units.
 - Check for unnecessary whitespace with `git diff --check` before committing.
 - Please follow the prevailing code conventions in the repository.
   Differences in style make the code harder to understand for everyone.
 - Make sure your commit messages are in the proper format.
 
-```
+```text
     Add more cowbell to Get-Something.ps1
 
     The functionality of Get-Something would be greatly improved if there was a little
@@ -49,7 +49,7 @@ In the highly unlikely event that that is _not_ the case, commits to update or a
 
 - Push your changes to a topic branch in your fork of the repository.
 - Submit a pull request to the main repository.
-- Once the pull request has been reviewed and accepted, it will be merged with the master branch.
+- Once the pull request has been reviewed and accepted, it will be merged with the main branch.
 - Celebrate
 
 ## Additional Resources
@@ -59,4 +59,3 @@ In the highly unlikely event that that is _not_ the case, commits to update or a
 - [GitHub pull request documentation](https://help.github.com/send-pull-requests/)
 - [GitHub Flow guide](https://guides.github.com/introduction/flow/)
 - [GitHub's guide to contributing to open source projects](https://guides.github.com/activities/contributing-to-open-source/)
-

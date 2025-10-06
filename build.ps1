@@ -1,26 +1,28 @@
 [CmdletBinding(DefaultParameterSetName = 'Task')]
 param(
     # Build task(s) to execute
-    [parameter(ParameterSetName = 'Task', position = 0)]
-    [ArgumentCompleter( {
+    [parameter(ParameterSetName = 'Task', Position = 0)]
+    [ArgumentCompleter({
         param($Command, $Parameter, $WordToComplete, $CommandAst, $FakeBoundParams)
-        $psakeFile = './psakeFile.ps1'
+        $PSakeFile = './PSakeFile.ps1'
+
         switch ($Parameter) {
             'Task' {
                 if ([string]::IsNullOrEmpty($WordToComplete)) {
-                    Get-PSakeScriptTasks -buildFile $psakeFile | Select-Object -ExpandProperty Name
+                    Get-PSakeScriptTasks -BuildFile $PSakeFile | Select-Object -ExpandProperty Name
                 }
                 else {
-                    Get-PSakeScriptTasks -buildFile $psakeFile |
+                    Get-PSakeScriptTasks -BuildFile $PSakeFile |
                         Where-Object { $_.Name -match $WordToComplete } |
                         Select-Object -ExpandProperty Name
                 }
             }
+
             Default {
             }
         }
     })]
-    [string[]]$Task = 'default',
+    [string[]]$Task = 'Default',
 
     # Bootstrap dependencies
     [switch]$Bootstrap,
@@ -29,37 +31,43 @@ param(
     [parameter(ParameterSetName = 'Help')]
     [switch]$Help,
 
-    # Optional properties to pass to psake
+    # Optional properties to pass to PSake
     [hashtable]$Properties,
 
-    # Optional parameters to pass to psake
+    # Optional parameters to pass to PSake
     [hashtable]$Parameters
 )
 
 $ErrorActionPreference = 'Stop'
 
-# Bootstrap dependencies
+# Bootstrap Dependencies
 if ($Bootstrap.IsPresent) {
-    Get-PackageProvider -Name Nuget -ForceBootstrap | Out-Null
+    Get-PackageProvider -Name NuGet -ForceBootstrap | Out-Null
     Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
-    if ((Test-Path -Path ./requirements.psd1)) {
+
+    if (Test-Path -Path './Requirements.psd1') {
         if (-not (Get-Module -Name PSDepend -ListAvailable)) {
             Install-Module -Name PSDepend -Repository PSGallery -Scope CurrentUser -Force
         }
+
         Import-Module -Name PSDepend -Verbose:$false
-        Invoke-PSDepend -Path './requirements.psd1' -Install -Import -Force -WarningAction SilentlyContinue
-    } else {
-        Write-Warning 'No [requirements.psd1] found. Skipping build dependency installation.'
+        Invoke-PSDepend -Path './Requirements.psd1' -Install -Import -Force -WarningAction SilentlyContinue
+    }
+    else {
+        Write-Warning 'No [Requirements.psd1] found. Skipping build dependency installation.'
     }
 }
 
-# Execute psake task(s)
-$psakeFile = './psakeFile.ps1'
+# Execute PSake Task(s)
+$PSakeFile = './PSakeFile.ps1'
+
 if ($PSCmdlet.ParameterSetName -eq 'Help') {
-    Get-PSakeScriptTasks -buildFile $psakeFile |
+    Get-PSakeScriptTasks -BuildFile $PSakeFile |
         Format-Table -Property Name, Description, Alias, DependsOn
-} else {
+}
+else {
     Set-BuildEnvironment -Force
-    Invoke-psake -buildFile $psakeFile -taskList $Task -nologo -properties $Properties -parameters $Parameters
-    exit ([int](-not $psake.build_success))
+    Invoke-PSake -BuildFile $PSakeFile -TaskList $Task -NoLogo -Properties $Properties -Parameters $Parameters
+
+    exit ([int](-not $PSake.build_success))
 }

@@ -12,9 +12,9 @@
 	for enumerating library sections. Designed for local network use.
 
 	Authentication: Most PMS endpoints require an X-Plex-Token. This script will:
-	  1. Use the -Token parameter when supplied
-	  2. Else use the value in $env:PLEX_TOKEN if present
-	  3. Otherwise attempt an unauthenticated request (may fail with 401/401)
+		1. Use the -Token parameter when supplied
+		2. Else use the value in $env:PLEX_TOKEN if present
+		3. Otherwise attempt an unauthenticated request (may fail with 401/401)
 
 	The script adds standard X-Plex-* headers recommended by Plex so that the
 	server can correctly attribute the client.

@@ -12,6 +12,7 @@ The PoshPlex module utilizes the official Plex Media Server API to perform all o
 
 - PSPlex
 - PoshPlex
+- Plush
 
 **Define goals for the project:**
 
@@ -64,3 +65,4 @@ Obtain a Plex authentication token and connect using:
 New-PlexAuthenticationToken
 Connect-PlexServer
 ```
+

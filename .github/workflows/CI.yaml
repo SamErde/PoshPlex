@@ -1,5 +1,8 @@
 name: CI
 on: [push, pull_request]
+permissions:
+  contents: read
+
 jobs:
   test:
     name: Run Tests
@@ -9,7 +12,12 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macOS-latest]
     steps:
-    - uses: actions/checkout@v4
+    - name: Harden the runner (Audit all outbound calls)
+      uses: step-security/harden-runner@95d9a5deda9de15063e7595e9719c11c38c90ae2 # v2.13.2
+      with:
+        egress-policy: audit
+
+    - uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
     - name: Test
       shell: pwsh
       run: ./Build.ps1 -Task Test -Bootstrap

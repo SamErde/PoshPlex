@@ -20,4 +20,4 @@ jobs:
         persist-credentials: false
     - name: Test
       shell: pwsh
-      run: ./Build.ps1 -Task Test -Bootstrap
+      run: ./build.ps1 -Task Test -Bootstrap

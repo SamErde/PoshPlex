@@ -54,7 +54,7 @@ if ($Bootstrap.IsPresent) {
         Invoke-PSDepend -Path './requirements.psd1' -Install -Force -WarningAction SilentlyContinue
     }
     else {
-        Write-Warning 'No [Requirements.psd1] found. Skipping build dependency installation.'
+        Write-Warning 'No [requirements.psd1] found. Skipping build dependency installation.'
     }
 }
 

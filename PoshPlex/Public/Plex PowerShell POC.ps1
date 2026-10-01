@@ -5,35 +5,35 @@
 
 <#
 .SYNOPSIS
-	Retrieves the list of Plex libraries (sections) from a Plex Media Server.
+    Retrieves the list of Plex libraries (sections) from a Plex Media Server.
 
 .DESCRIPTION
-	Provides lightweight helper functions to call the Plex Media Server API
-	for enumerating library sections. Designed for local network use.
+    Provides lightweight helper functions to call the Plex Media Server API
+    for enumerating library sections. Designed for local network use.
 
-	Authentication: Most PMS endpoints require an X-Plex-Token. This script will:
-		1. Use the -Token parameter when supplied
-		2. Else use the value in $env:PLEX_TOKEN if present
-		3. Otherwise attempt an unauthenticated request (may fail with 401/401)
+    Authentication: Most PMS endpoints require an X-Plex-Token. This script will:
+        1. Use the -Token parameter when supplied
+        2. Else use the value in $env:PLEX_TOKEN if present
+        3. Otherwise attempt an unauthenticated request (may fail with 401/401)
 
-	The script adds standard X-Plex-* headers recommended by Plex so that the
-	server can correctly attribute the client.
-
-.EXAMPLE
-	PS> . .\PlexMediaServerAPI.ps1
-	PS> Get-PlexLibraries -Server 192.168.1.10 -Port 5501 -Token (Get-Content .\plex_token.txt -Raw)
+    The script adds standard X-Plex-* headers recommended by Plex so that the
+    server can correctly attribute the client.
 
 .EXAMPLE
-	PS> $env:PLEX_TOKEN = 'your-token-here'
-	PS> Get-PlexLibraries -Server 192.168.1.10 -Port 5501 | Format-Table
+    PS> . .\PlexMediaServerAPI.ps1
+    PS> Get-PlexLibraries -Server 192.168.1.10 -Port 5501 -Token (Get-Content .\plex_token.txt -Raw)
+
+.EXAMPLE
+    PS> $env:PLEX_TOKEN = 'your-token-here'
+    PS> Get-PlexLibraries -Server 192.168.1.10 -Port 5501 | Format-Table
 
 .OUTPUTS
-	PSCustomObject for each library section with properties:
-		Id, Title, Type, Agent, Scanner, Language, Uuid, CreatedAt, UpdatedAt, Locations
+    PSCustomObject for each library section with properties:
+        Id, Title, Type, Agent, Scanner, Language, Uuid, CreatedAt, UpdatedAt, Locations
 
 .NOTES
-	Time values are converted from Unix epoch seconds when available.
-	Network errors and HTTP failures are surfaced with readable messages.
+    Time values are converted from Unix epoch seconds when available.
+    Network errors and HTTP failures are surfaced with readable messages.
 #>
 
 param(
@@ -150,64 +150,64 @@ function Invoke-PlexApi {
 }
 
 function Get-PlexLibraries {
-	[CmdletBinding()]
-	param(
-		[Parameter(Mandatory)][string]$Server,
-		[Parameter()][int]$Port = 32400,
-		[Parameter()][string]$Token
-	)
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][string]$Server,
+        [Parameter()][int]$Port = 32400,
+        [Parameter()][string]$Token
+    )
 
-	$xml = Invoke-PlexApi -Server $Server -Port $Port -Path '/library/sections' -Token $Token
+    $xml = Invoke-PlexApi -Server $Server -Port $Port -Path '/library/sections' -Token $Token
 
-	if (-not $xml.MediaContainer.Directory) {
-		Write-Warning 'No libraries returned (possible permission or token issue).'
-		return @()
-	}
+    if (-not $xml.MediaContainer.Directory) {
+        Write-Warning 'No libraries returned (possible permission or token issue).'
+        return @()
+    }
 
-	$libraries = foreach ($section in $xml.MediaContainer.Directory) {
-		$created = $null
-		$updated = $null
-		if ($section.createdAt) { try { $created = [DateTimeOffset]::FromUnixTimeSeconds([int64]$section.createdAt).DateTime } catch { } }
-		if ($section.updatedAt) { try { $updated = [DateTimeOffset]::FromUnixTimeSeconds([int64]$section.updatedAt).DateTime } catch { } }
+    $libraries = foreach ($section in $xml.MediaContainer.Directory) {
+        $created = $null
+        $updated = $null
+        if ($section.createdAt) { try { $created = [DateTimeOffset]::FromUnixTimeSeconds([int64]$section.createdAt).DateTime } catch { } }
+        if ($section.updatedAt) { try { $updated = [DateTimeOffset]::FromUnixTimeSeconds([int64]$section.updatedAt).DateTime } catch { } }
 
-		[PSCustomObject]@{
-			Id        = [int]$section.key
-			Title     = $section.title
-			Type      = $section.type
-			Agent     = $section.agent
-			Scanner   = $section.scanner
-			Language  = $section.language
-			Uuid      = $section.uuid
-			CreatedAt = $created
-			UpdatedAt = $updated
-			Locations = @($section.Location | ForEach-Object { $_.path })
-		}
-	}
+        [PSCustomObject]@{
+            Id        = [int]$section.key
+            Title     = $section.title
+            Type      = $section.type
+            Agent     = $section.agent
+            Scanner   = $section.scanner
+            Language  = $section.language
+            Uuid      = $section.uuid
+            CreatedAt = $created
+            UpdatedAt = $updated
+            Locations = @($section.Location | ForEach-Object { $_.path })
+        }
+    }
 
-	return $libraries | Sort-Object Title
+    return $libraries | Sort-Object Title
 }
 
 <#
 .SYNOPSIS
-	Acquire a Plex authentication token using account credentials.
+    Acquire a Plex authentication token using account credentials.
 .DESCRIPTION
-	Performs a POST to https://plex.tv/users/sign_in.json with Basic authentication
-	(username:password) and required X-Plex-* headers. Returns the auth token.
-	Prefer using a SecureString for the password. You can also be prompted.
+    Performs a POST to https://plex.tv/users/sign_in.json with Basic authentication
+    (username:password) and required X-Plex-* headers. Returns the auth token.
+    Prefer using a SecureString for the password. You can also be prompted.
 .PARAMETER Username
-	Plex account username (email) or managed user login.
+    Plex account username (email) or managed user login.
 .PARAMETER Password
-	SecureString or plain text password. If omitted, will prompt securely.
+    SecureString or plain text password. If omitted, will prompt securely.
 .PARAMETER SetEnv
-	If specified, sets $env:PLEX_TOKEN with the retrieved token.
+    If specified, sets $env:PLEX_TOKEN with the retrieved token.
 .PARAMETER SaveTo
-	Optional file path to save ONLY the token (no newline decoration). Directory must exist.
+    Optional file path to save ONLY the token (no newline decoration). Directory must exist.
 .PARAMETER Quiet
-	Suppress output of the token to the pipeline (useful with -SetEnv / -SaveTo).
+    Suppress output of the token to the pipeline (useful with -SetEnv / -SaveTo).
 .EXAMPLE
-	New-PlexAuthTokenBasic -Username 'user@example.com' -SetEnv
+    New-PlexAuthTokenBasic -Username 'user@example.com' -SetEnv
 .EXAMPLE
-	New-PlexAuthTokenBasic -Username 'user@example.com' -SaveTo .\plex_token.txt
+    New-PlexAuthTokenBasic -Username 'user@example.com' -SaveTo .\plex_token.txt
 #>
 function New-PlexAuthTokenBasic {
     [CmdletBinding()] param(
@@ -256,27 +256,27 @@ function New-PlexAuthTokenBasic {
 
 <#
 .SYNOPSIS
-	Initiate or complete a Plex PIN (device link) authentication flow.
+    Initiate or complete a Plex PIN (device link) authentication flow.
 .DESCRIPTION
-	Requests a PIN code from Plex and optionally polls until the user links it via
-	https://plex.tv/link. When the token is issued, returns it. Useful when you
-	don't want to enter the account password directly.
+    Requests a PIN code from Plex and optionally polls until the user links it via
+    https://plex.tv/link. When the token is issued, returns it. Useful when you
+    don't want to enter the account password directly.
 .PARAMETER StartOnly
-	Emit the PIN info and do not poll for completion.
+    Emit the PIN info and do not poll for completion.
 .PARAMETER PollIntervalSec
-	Seconds between polling attempts (default 5).
+    Seconds between polling attempts (default 5).
 .PARAMETER TimeoutSec
-	Maximum seconds to wait for token (default 300).
+    Maximum seconds to wait for token (default 300).
 .PARAMETER SetEnv
-	Sets $env:PLEX_TOKEN when token obtained.
+    Sets $env:PLEX_TOKEN when token obtained.
 .PARAMETER SaveTo
-	Saves token to a file when token obtained.
+    Saves token to a file when token obtained.
 .PARAMETER Quiet
-	Suppress token output (still returns object without printing token if desired).
+    Suppress token output (still returns object without printing token if desired).
 .EXAMPLE
-	Start-PlexAuthPin  # Shows code and waits until linked, returns token.
+    Start-PlexAuthPin  # Shows code and waits until linked, returns token.
 .EXAMPLE
-	Start-PlexAuthPin -StartOnly  # Just get the code and link manually later.
+    Start-PlexAuthPin -StartOnly  # Just get the code and link manually later.
 #>
 function Start-PlexAuthPin {
     [CmdletBinding()] param(
@@ -390,37 +390,37 @@ function Start-PlexAuthPin {
 }
 
 function Test-PlexToken {
-	[CmdletBinding()] param(
-		[Parameter(Mandatory)][string]$Server,
-		[int]$Port = 32400,
-		[Parameter(Mandatory)][string]$Token
-	)
-	try {
-		$raw = Invoke-PlexApi -Server $Server -Port $Port -Path '/identity' -Token $Token -Raw -ErrorAction Stop
-		$ok = $raw.StatusCode -eq 200
-		$machineId = $null
-		$friendly = $null
-		$version = $null
-		try {
-			[xml]$xml = $raw.Content
-			$machineId = $xml.MediaContainer.machineIdentifier
-			$friendly  = $xml.MediaContainer.friendlyName
-			$version   = $xml.MediaContainer.version
-		} catch { }
-		[PSCustomObject]@{
-			Valid             = $ok
-			StatusCode        = $raw.StatusCode
-			MachineIdentifier = $machineId
-			FriendlyName      = $friendly
-			Version           = $version
-		}
-	} catch {
-		[PSCustomObject]@{
-			Valid      = $false
-			StatusCode = $null
-			Error      = $_.Exception.Message
-		}
-	}
+    [CmdletBinding()] param(
+        [Parameter(Mandatory)][string]$Server,
+        [int]$Port = 32400,
+        [Parameter(Mandatory)][string]$Token
+    )
+    try {
+        $raw = Invoke-PlexApi -Server $Server -Port $Port -Path '/identity' -Token $Token -Raw -ErrorAction Stop
+        $ok = $raw.StatusCode -eq 200
+        $machineId = $null
+        $friendly = $null
+        $version = $null
+        try {
+            [xml]$xml = $raw.Content
+            $machineId = $xml.MediaContainer.machineIdentifier
+            $friendly  = $xml.MediaContainer.friendlyName
+            $version   = $xml.MediaContainer.version
+        } catch { }
+        [PSCustomObject]@{
+            Valid             = $ok
+            StatusCode        = $raw.StatusCode
+            MachineIdentifier = $machineId
+            FriendlyName      = $friendly
+            Version           = $version
+        }
+    } catch {
+        [PSCustomObject]@{
+            Valid      = $false
+            StatusCode = $null
+            Error      = $_.Exception.Message
+        }
+    }
 }
 
 if ($ExecutionContext.SessionState.Module) {
@@ -431,6 +431,6 @@ if ($ExecutionContext.SessionState.Module) {
 <#
 NOTE: Automatic execution removed to avoid unintended calls when importing as a module.
 To list libraries manually after importing or dot-sourcing:
-	Get-PlexLibraries -Server $Server -Port $Port -Token $Token
+    Get-PlexLibraries -Server $Server -Port $Port -Token $Token
 Or acquire a token first via Start-PlexAuthPin / New-PlexAuthTokenBasic.
 #>

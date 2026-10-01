@@ -35,7 +35,13 @@ BeforeDiscovery {
     ## To test, restart session.
 }
 
-Describe "Test help for <_.Name>" -ForEach $Commands {
+if (-not $Commands) {
+    Describe 'Command help' {
+        It 'Skips command help checks when the module exports no commands' -Skip {}
+    }
+}
+else {
+    Describe "Test help for <_.Name>" -ForEach $Commands {
 
     BeforeDiscovery {
         # Get command help, parameters, and links
@@ -114,4 +120,5 @@ Describe "Test help for <_.Name>" -ForEach $Commands {
             $_ -in $CommandParameterNames | Should -Be $true
         }
     }
+}
 }

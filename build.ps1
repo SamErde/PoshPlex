@@ -4,7 +4,7 @@ param(
     [parameter(ParameterSetName = 'Task', Position = 0)]
     [ArgumentCompleter({
         param($Command, $Parameter, $WordToComplete, $CommandAst, $FakeBoundParams)
-        $PSakeFile = './PSakeFile.ps1'
+        $PSakeFile = './psakeFile.ps1'
 
         switch ($Parameter) {
             'Task' {
@@ -45,21 +45,21 @@ if ($Bootstrap.IsPresent) {
     Get-PackageProvider -Name NuGet -ForceBootstrap | Out-Null
     Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
-    if (Test-Path -Path './Requirements.psd1') {
+    if (Test-Path -Path './requirements.psd1') {
         if (-not (Get-Module -Name PSDepend -ListAvailable)) {
             Install-Module -Name PSDepend -Repository PSGallery -Scope CurrentUser -Force
         }
 
         Import-Module -Name PSDepend -Verbose:$false
-        Invoke-PSDepend -Path './Requirements.psd1' -Install -Import -Force -WarningAction SilentlyContinue
+        Invoke-PSDepend -Path './requirements.psd1' -Install -Force -WarningAction SilentlyContinue
     }
     else {
-        Write-Warning 'No [Requirements.psd1] found. Skipping build dependency installation.'
+        Write-Warning 'No [requirements.psd1] found. Skipping build dependency installation.'
     }
 }
 
 # Execute PSake Task(s)
-$PSakeFile = './PSakeFile.ps1'
+$PSakeFile = './psakeFile.ps1'
 
 if ($PSCmdlet.ParameterSetName -eq 'Help') {
     Get-PSakeScriptTasks -BuildFile $PSakeFile |
@@ -67,7 +67,36 @@ if ($PSCmdlet.ParameterSetName -eq 'Help') {
 }
 else {
     Set-BuildEnvironment -Force
+    $testResultsPath = Join-Path -Path $PSScriptRoot -ChildPath 'out/testResults.xml'
+    $shouldCheckTestResults = $Task -contains 'Test' -or $Task -contains 'Default'
+    if ($shouldCheckTestResults -and (Test-Path -LiteralPath $testResultsPath)) {
+        Remove-Item -LiteralPath $testResultsPath
+    }
+
     Invoke-PSake -BuildFile $PSakeFile -TaskList $Task -NoLogo -Properties $Properties -Parameters $Parameters
+
+    if ($shouldCheckTestResults) {
+        if (-not (Test-Path -LiteralPath $testResultsPath)) {
+            throw "Pester test results were not written to [$testResultsPath]."
+        }
+
+        [xml]$testResults = Get-Content -LiteralPath $testResultsPath -Raw
+        $hasFailedTests = $testResults.SelectNodes(
+            '//*[local-name()="failure" or local-name()="error"]'
+        ).Count -gt 0
+        foreach ($node in $testResults.SelectNodes('//*[@failures or @errors or @failed]')) {
+            foreach ($attribute in @('failures', 'errors', 'failed')) {
+                if ($node.HasAttribute($attribute) -and [int]$node.GetAttribute($attribute) -gt 0) {
+                    $hasFailedTests = $true
+                }
+            }
+        }
+
+        if ($hasFailedTests) {
+            Write-Error 'Pester reported failed tests.' -ErrorAction Continue
+            exit 1
+        }
+    }
 
     exit ([int](-not $PSake.build_success))
 }

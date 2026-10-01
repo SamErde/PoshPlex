@@ -10,4 +10,25 @@ foreach ($import in @($classes + $public + $private)) {
     }
 }
 
-Export-ModuleMember -Function $public.Basename
+if ($public.Count -gt 0) {
+    $publicFunctions = foreach ($script in $public) {
+        $tokens = $null
+        $parseErrors = $null
+        $scriptAst = [System.Management.Automation.Language.Parser]::ParseFile(
+            $script.FullName,
+            [ref]$tokens,
+            [ref]$parseErrors
+        )
+        if ($parseErrors) {
+            throw "Unable to parse public script [$($script.FullName)]"
+        }
+
+        $scriptAst.EndBlock.Statements |
+            Where-Object { $_ -is [System.Management.Automation.Language.FunctionDefinitionAst] } |
+            ForEach-Object -Process { $_.Name }
+    }
+
+    if ($publicFunctions) {
+        Export-ModuleMember -Function $publicFunctions
+    }
+}

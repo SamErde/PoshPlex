@@ -42,6 +42,22 @@ param(
     [string]$Token
 )
 
+<#
+.SYNOPSIS
+Creates standard request headers for the Plex Media Server API.
+
+.DESCRIPTION
+Builds the X-Plex headers used by this module and includes an authentication
+token header when a token is supplied.
+
+.PARAMETER Token
+Optional Plex authentication token to include in the headers.
+
+.EXAMPLE
+New-PlexRequestHeader -Token $env:PLEX_TOKEN
+
+Creates a request header hashtable with the current Plex token.
+#>
 function New-PlexRequestHeader {
     param(
         [string]$Token
@@ -65,10 +81,20 @@ function New-PlexRequestHeader {
     return $headers
 }
 
+<#
+.SYNOPSIS
+Gets or creates the persistent Plex client identifier.
+
+.DESCRIPTION
+Reuses the identifier stored in the current user's profile, or creates and
+stores a new identifier when no saved value is available.
+
+.EXAMPLE
+Get-PlexClientIdentifier
+
+Returns the client identifier used in Plex API requests.
+#>
 function Get-PlexClientIdentifier {
-    <#
-        Generates or reuses a persistent client identifier (stored in the user profile).
-    #>
     $idFile = Join-Path $env:APPDATA 'PlexClientId.txt'
     if (Test-Path $idFile) {
         try { return (Get-Content -Path $idFile -Raw).Trim() } catch { }
@@ -78,6 +104,32 @@ function Get-PlexClientIdentifier {
     return $newId
 }
 
+<#
+.SYNOPSIS
+Sends a request to the Plex Media Server API.
+
+.DESCRIPTION
+Sends an HTTP GET request to the specified Plex API path. By default, the
+response is parsed as XML; use -Raw to return the complete web response.
+
+.PARAMETER Server
+Plex server hostname, IP address, or absolute server URL.
+.PARAMETER Port
+Plex server API port. This is ignored when Server is an absolute URL.
+.PARAMETER Path
+Plex API path to request, such as /identity.
+.PARAMETER Token
+Optional authentication token. PLEX_TOKEN is used when this parameter is omitted.
+.PARAMETER Query
+Optional query-string parameters to add to the request.
+.PARAMETER Raw
+Returns the complete web response instead of parsing its content as XML.
+
+.EXAMPLE
+Invoke-PlexApi -Server '192.168.1.10' -Path '/identity'
+
+Requests the server identity and returns the parsed XML response.
+#>
 function Invoke-PlexApi {
     [CmdletBinding()]
     param(
@@ -149,6 +201,26 @@ function Invoke-PlexApi {
     }
 }
 
+<#
+.SYNOPSIS
+Retrieves the list of Plex libraries from a Plex Media Server.
+
+.DESCRIPTION
+Enumerates the library sections exposed by a Plex Media Server and returns
+their metadata as PowerShell objects.
+
+.PARAMETER Server
+Plex server hostname or IP address.
+.PARAMETER Port
+Plex server API port. The default is 32400.
+.PARAMETER Token
+Optional Plex authentication token. PLEX_TOKEN is used when omitted.
+
+.EXAMPLE
+Get-PlexLibraries -Server '192.168.1.10' -Port 32400 -Token $env:PLEX_TOKEN
+
+Returns the libraries available on the specified Plex server.
+#>
 function Get-PlexLibraries {
     [CmdletBinding()]
     param(
@@ -206,8 +278,13 @@ function Get-PlexLibraries {
     Suppress output of the token to the pipeline (useful with -SetEnv / -SaveTo).
 .EXAMPLE
     New-PlexAuthTokenBasic -Username 'user@example.com' -SetEnv
+
+Prompts for the account password and stores the token in PLEX_TOKEN.
+
 .EXAMPLE
     New-PlexAuthTokenBasic -Username 'user@example.com' -SaveTo .\plex_token.txt
+
+Prompts for the account password and saves the token to the specified file.
 #>
 function New-PlexAuthTokenBasic {
     [CmdletBinding()] param(
@@ -275,8 +352,13 @@ function New-PlexAuthTokenBasic {
     Suppress token output (still returns object without printing token if desired).
 .EXAMPLE
     Start-PlexAuthPin  # Shows code and waits until linked, returns token.
+
+Displays the PIN and waits for the Plex account to complete device linking.
+
 .EXAMPLE
     Start-PlexAuthPin -StartOnly  # Just get the code and link manually later.
+
+Displays the PIN information and returns without polling for completion.
 #>
 function Start-PlexAuthPin {
     [CmdletBinding()] param(
@@ -389,6 +471,26 @@ function Start-PlexAuthPin {
     return $result
 }
 
+<#
+.SYNOPSIS
+Tests whether a Plex authentication token is accepted by a server.
+
+.DESCRIPTION
+Requests the Plex server identity endpoint and returns the response status
+and available server details without throwing for an invalid token.
+
+.PARAMETER Server
+Plex server hostname or IP address.
+.PARAMETER Port
+Plex server API port. The default is 32400.
+.PARAMETER Token
+Plex authentication token to validate.
+
+.EXAMPLE
+Test-PlexToken -Server '192.168.1.10' -Token $env:PLEX_TOKEN
+
+Checks the token and returns its validity and the server identity details.
+#>
 function Test-PlexToken {
     [CmdletBinding()] param(
         [Parameter(Mandatory)][string]$Server,

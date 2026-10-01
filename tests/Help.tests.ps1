@@ -7,7 +7,7 @@ BeforeDiscovery {
         $CommonParams = @(
             'Debug', 'ErrorAction', 'ErrorVariable', 'InformationAction', 'InformationVariable',
             'OutBuffer', 'OutVariable', 'PipelineVariable', 'Verbose', 'WarningAction',
-            'WarningVariable', 'Confirm', 'WhatIf'
+            'WarningVariable', 'ProgressAction', 'Confirm', 'WhatIf'
         )
         $Params | Where-Object { $_.Name -notin $CommonParams } | Sort-Object -Property Name -Unique
     }
@@ -36,6 +36,11 @@ BeforeDiscovery {
 }
 
 Describe 'Module exports' {
+    BeforeAll {
+        $OutputModuleManifest = Join-Path -Path $env:BHBuildOutput -ChildPath "$env:BHProjectName.psd1"
+        Import-Module -Name $OutputModuleManifest -Force -ErrorAction Stop
+    }
+
     It 'Exports at least one command for help validation' {
         $ModuleCommands = @(
             Get-Command -Module $env:BHProjectName -CommandType Cmdlet, Function
@@ -92,41 +97,47 @@ else {
         ($CommandHelp.Examples.Example.Remarks | Select-Object -First 1).Text | Should -Not -BeNullOrEmpty
     }
 
-    It "Help link <_> is valid" -ForEach $HelpLinks {
-        (Invoke-WebRequest -Uri $_ -UseBasicParsing).StatusCode | Should -Be '200'
-    }
-
-    Context "Parameter <_.Name>" -ForEach $CommandParameters {
-
-        BeforeAll {
-            $Parameter         = $_
-            $ParameterName     = $Parameter.Name
-            $ParameterHelp     = $CommandHelp.parameters.parameter | Where-Object Name -eq $ParameterName
-            $ParameterHelpType = if ($ParameterHelp.ParameterValue) { $ParameterHelp.ParameterValue.Trim() }
-        }
-
-        # Should be a description for every parameter
-        It "Has description" {
-            $ParameterHelp.Description.Text | Should -Not -BeNullOrEmpty
-        }
-
-        # Required value in Help should match IsMandatory property of parameter
-        It "Has correct [Mandatory] value" {
-            $CodeMandatory = $_.IsMandatory.ToString()
-            $ParameterHelp.Required | Should -Be $CodeMandatory
-        }
-
-        # Parameter type in help should match code
-        It "Has correct parameter type" {
-            $ParameterHelpType | Should -Be $Parameter.ParameterType.Name
+    if ($HelpLinks) {
+        It "Help link <_> is valid" -ForEach $HelpLinks {
+            (Invoke-WebRequest -Uri $_ -UseBasicParsing).StatusCode | Should -Be '200'
         }
     }
 
-    Context "Test <_> Help Parameter Help For <CommandName>" -ForEach $HelpParameterNames {
+    if ($CommandParameters) {
+        Context "Parameter <_.Name>" -ForEach $CommandParameters {
 
-        # Shouldn't find extra parameters in help.
-        It "Finds help parameter in code: <_>" {
-            $_ -in $CommandParameterNames | Should -Be $true
+            BeforeAll {
+                $Parameter         = $_
+                $ParameterName     = $Parameter.Name
+                $ParameterHelp     = $CommandHelp.parameters.parameter | Where-Object Name -eq $ParameterName
+                $ParameterHelpType = if ($ParameterHelp.ParameterValue) { $ParameterHelp.ParameterValue.Trim() }
+            }
+
+            # Should be a description for every parameter
+            It "Has description" {
+                $ParameterHelp.Description.Text | Should -Not -BeNullOrEmpty
+            }
+
+            # Required value in Help should match IsMandatory property of parameter
+            It "Has correct [Mandatory] value" {
+                $CodeMandatory = $_.IsMandatory.ToString()
+                $ParameterHelp.Required | Should -Be $CodeMandatory
+            }
+
+            # Parameter type in help should match code
+            It "Has correct parameter type" {
+                $ParameterHelpType | Should -Be $Parameter.ParameterType.Name
+            }
+        }
+    }
+
+    if ($HelpParameterNames) {
+        Context "Test <_> Help Parameter Help For <CommandName>" -ForEach $HelpParameterNames {
+
+            # Shouldn't find extra parameters in help.
+            It "Finds help parameter in code: <_>" {
+                $_ -in $CommandParameterNames | Should -Be $true
+            }
         }
     }
 }

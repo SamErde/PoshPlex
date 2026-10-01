@@ -9,5 +9,3 @@ foreach ($import in @($classes + $public + $private)) {
         throw "Unable to dot source [$($import.FullName)]"
     }
 }
-
-Export-ModuleMember -Function $public.Basename

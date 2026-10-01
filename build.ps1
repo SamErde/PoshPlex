@@ -67,7 +67,40 @@ if ($PSCmdlet.ParameterSetName -eq 'Help') {
 }
 else {
     Set-BuildEnvironment -Force
+    $testResultsPath = Join-Path -Path $PSScriptRoot -ChildPath 'out/testResults.xml'
+    $shouldCheckTestResults = $Task -contains 'Test' -or $Task -contains 'Default'
+    if ($shouldCheckTestResults) {
+        $testResultsDirectory = Split-Path -Path $testResultsPath -Parent
+        New-Item -Path $testResultsDirectory -ItemType Directory -Force | Out-Null
+        if (Test-Path -LiteralPath $testResultsPath) {
+            Remove-Item -LiteralPath $testResultsPath
+        }
+    }
+
     Invoke-PSake -BuildFile $PSakeFile -TaskList $Task -NoLogo -Properties $Properties -Parameters $Parameters
+
+    if ($shouldCheckTestResults) {
+        if (-not (Test-Path -LiteralPath $testResultsPath)) {
+            throw "Pester test results were not written to [$testResultsPath]."
+        }
+
+        [xml]$testResults = Get-Content -LiteralPath $testResultsPath -Raw
+        $hasFailedTests = $testResults.SelectNodes(
+            '//*[local-name()="failure" or local-name()="error"]'
+        ).Count -gt 0
+        foreach ($node in $testResults.SelectNodes('//*[@failures or @errors or @failed]')) {
+            foreach ($attribute in @('failures', 'errors', 'failed')) {
+                if ($node.HasAttribute($attribute) -and [int]$node.GetAttribute($attribute) -gt 0) {
+                    $hasFailedTests = $true
+                }
+            }
+        }
+
+        if ($hasFailedTests) {
+            Write-Error 'Pester reported failed tests.' -ErrorAction Continue
+            exit 1
+        }
+    }
 
     exit ([int](-not $PSake.build_success))
 }

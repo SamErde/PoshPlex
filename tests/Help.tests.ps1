@@ -7,7 +7,7 @@ BeforeDiscovery {
         $CommonParams = @(
             'Debug', 'ErrorAction', 'ErrorVariable', 'InformationAction', 'InformationVariable',
             'OutBuffer', 'OutVariable', 'PipelineVariable', 'Verbose', 'WarningAction',
-            'WarningVariable', 'Confirm', 'WhatIf'
+            'WarningVariable', 'ProgressAction', 'Confirm', 'WhatIf'
         )
         $Params | Where-Object { $_.Name -notin $CommonParams } | Sort-Object -Property Name -Unique
     }
@@ -35,7 +35,30 @@ BeforeDiscovery {
     ## To test, restart session.
 }
 
-Describe "Test help for <_.Name>" -ForEach $Commands {
+Describe 'Module exports' {
+    BeforeAll {
+        $Manifest = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
+        $OutputModuleDirectory = Join-Path -Path (Join-Path -Path $env:BHProjectPath -ChildPath 'Output') -ChildPath $env:BHProjectName
+        $OutputModuleVersionDirectory = Join-Path -Path $OutputModuleDirectory -ChildPath $Manifest.ModuleVersion
+        $OutputModuleManifest = Join-Path -Path $OutputModuleVersionDirectory -ChildPath "$env:BHProjectName.psd1"
+        Import-Module -Name $OutputModuleManifest -Force -ErrorAction Stop
+    }
+
+    It 'Exports at least one command for help validation' {
+        $ModuleCommands = @(
+            Get-Command -Module $env:BHProjectName -CommandType Cmdlet, Function
+        )
+        $ModuleCommands.Count | Should -BeGreaterThan 0
+    }
+}
+
+if (-not $Commands) {
+    Describe 'Command help' {
+        It 'Skips command help checks when the module exports no commands' -Skip {}
+    }
+}
+else {
+    Describe "Test help for <_.Name>" -ForEach $Commands {
 
     BeforeDiscovery {
         # Get command help, parameters, and links
@@ -77,41 +100,48 @@ Describe "Test help for <_.Name>" -ForEach $Commands {
         ($CommandHelp.Examples.Example.Remarks | Select-Object -First 1).Text | Should -Not -BeNullOrEmpty
     }
 
-    It "Help link <_> is valid" -ForEach $HelpLinks {
-        (Invoke-WebRequest -Uri $_ -UseBasicParsing).StatusCode | Should -Be '200'
-    }
-
-    Context "Parameter <_.Name>" -ForEach $CommandParameters {
-
-        BeforeAll {
-            $Parameter         = $_
-            $ParameterName     = $Parameter.Name
-            $ParameterHelp     = $CommandHelp.parameters.parameter | Where-Object Name -eq $ParameterName
-            $ParameterHelpType = if ($ParameterHelp.ParameterValue) { $ParameterHelp.ParameterValue.Trim() }
-        }
-
-        # Should be a description for every parameter
-        It "Has description" {
-            $ParameterHelp.Description.Text | Should -Not -BeNullOrEmpty
-        }
-
-        # Required value in Help should match IsMandatory property of parameter
-        It "Has correct [Mandatory] value" {
-            $CodeMandatory = $_.IsMandatory.ToString()
-            $ParameterHelp.Required | Should -Be $CodeMandatory
-        }
-
-        # Parameter type in help should match code
-        It "Has correct parameter type" {
-            $ParameterHelpType | Should -Be $Parameter.ParameterType.Name
+    if ($HelpLinks) {
+        It "Help link <_> is valid" -ForEach $HelpLinks {
+            (Invoke-WebRequest -Uri $_ -UseBasicParsing).StatusCode | Should -Be '200'
         }
     }
 
-    Context "Test <_> Help Parameter Help For <CommandName>" -ForEach $HelpParameterNames {
+    if ($CommandParameters) {
+        Context "Parameter <_.Name>" -ForEach $CommandParameters {
 
-        # Shouldn't find extra parameters in help.
-        It "Finds help parameter in code: <_>" {
-            $_ -in $CommandParameterNames | Should -Be $true
+            BeforeAll {
+                $Parameter         = $_
+                $ParameterName     = $Parameter.Name
+                $ParameterHelp     = $CommandHelp.parameters.parameter | Where-Object Name -eq $ParameterName
+                $ParameterHelpType = if ($ParameterHelp.ParameterValue) { $ParameterHelp.ParameterValue.Trim() }
+            }
+
+            # Should be a description for every parameter
+            It "Has description" {
+                $ParameterHelp.Description.Text | Should -Not -BeNullOrEmpty
+            }
+
+            # Required value in Help should match IsMandatory property of parameter
+            It "Has correct [Mandatory] value" {
+                $CodeMandatory = $_.IsMandatory.ToString()
+                $ParameterHelp.Required | Should -Be $CodeMandatory
+            }
+
+            # Parameter type in help should match code
+            It "Has correct parameter type" {
+                $ParameterHelpType | Should -Be $Parameter.ParameterType.Name
+            }
         }
     }
+
+    if ($HelpParameterNames) {
+        Context "Test <_> Help Parameter Help For <CommandName>" -ForEach $HelpParameterNames {
+
+            # Shouldn't find extra parameters in help.
+            It "Finds help parameter in code: <_>" {
+                $_ -in $CommandParameterNames | Should -Be $true
+            }
+        }
+    }
+}
 }

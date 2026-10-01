@@ -2,7 +2,7 @@ properties {
     # Set this to $true to create a module with a monolithic PSM1
     $PSBPreference.Build.CompileModule = $false
     $PSBPreference.Help.DefaultLocale = 'en-US'
-    $PSBPreference.Test.OutputFile = 'out/testResults.xml'
+    $PSBPreference.Test.OutputFile = Join-Path -Path $PSScriptRoot -ChildPath 'out/testResults.xml'
 }
 
 task Default -depends Test

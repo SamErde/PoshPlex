@@ -11,7 +11,7 @@ foreach ($import in @($classes + $public + $private)) {
 }
 
 if ($public.Count -gt 0) {
-    $publicFunctions = foreach ($script in $public) {
+    $functionsToExport = foreach ($script in $public) {
         $tokens = $null
         $parseErrors = $null
         $scriptAst = [System.Management.Automation.Language.Parser]::ParseFile(
@@ -27,8 +27,20 @@ if ($public.Count -gt 0) {
             Where-Object { $_ -is [System.Management.Automation.Language.FunctionDefinitionAst] } |
             ForEach-Object -Process { $_.Name }
     }
-
-    if ($publicFunctions) {
-        Export-ModuleMember -Function $publicFunctions
+} else {
+    $moduleName = [System.IO.Path]::GetFileNameWithoutExtension($PSCommandPath)
+    $manifestPath = Join-Path -Path $PSScriptRoot -ChildPath "$moduleName.psd1"
+    if (-not (Test-Path -LiteralPath $manifestPath)) {
+        throw "Public scripts are unavailable and module manifest was not found at [$manifestPath]."
     }
+
+    $moduleManifest = Import-PowerShellDataFile -Path $manifestPath
+    $functionsToExport = @($moduleManifest.FunctionsToExport)
+    if (-not $functionsToExport -or $functionsToExport -contains '*') {
+        throw "Public scripts are unavailable and [$manifestPath] does not declare exported functions."
+    }
+}
+
+if ($functionsToExport) {
+    Export-ModuleMember -Function $functionsToExport
 }

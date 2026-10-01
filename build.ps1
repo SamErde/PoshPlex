@@ -4,7 +4,7 @@ param(
     [parameter(ParameterSetName = 'Task', Position = 0)]
     [ArgumentCompleter({
         param($Command, $Parameter, $WordToComplete, $CommandAst, $FakeBoundParams)
-        $PSakeFile = './PSakeFile.ps1'
+        $PSakeFile = './psakeFile.ps1'
 
         switch ($Parameter) {
             'Task' {
@@ -45,21 +45,21 @@ if ($Bootstrap.IsPresent) {
     Get-PackageProvider -Name NuGet -ForceBootstrap | Out-Null
     Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
 
-    if (Test-Path -Path './Requirements.psd1') {
+    if (Test-Path -Path './requirements.psd1') {
         if (-not (Get-Module -Name PSDepend -ListAvailable)) {
             Install-Module -Name PSDepend -Repository PSGallery -Scope CurrentUser -Force
         }
 
         Import-Module -Name PSDepend -Verbose:$false
-        Invoke-PSDepend -Path './Requirements.psd1' -Install -Import -Force -WarningAction SilentlyContinue
+        Invoke-PSDepend -Path './requirements.psd1' -Install -Force -WarningAction SilentlyContinue
     }
     else {
-        Write-Warning 'No [Requirements.psd1] found. Skipping build dependency installation.'
+        Write-Warning 'No [requirements.psd1] found. Skipping build dependency installation.'
     }
 }
 
 # Execute PSake Task(s)
-$PSakeFile = './PSakeFile.ps1'
+$PSakeFile = './psakeFile.ps1'
 
 if ($PSCmdlet.ParameterSetName -eq 'Help') {
     Get-PSakeScriptTasks -BuildFile $PSakeFile |

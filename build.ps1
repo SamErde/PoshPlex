@@ -69,8 +69,12 @@ else {
     Set-BuildEnvironment -Force
     $testResultsPath = Join-Path -Path $PSScriptRoot -ChildPath 'out/testResults.xml'
     $shouldCheckTestResults = $Task -contains 'Test' -or $Task -contains 'Default'
-    if ($shouldCheckTestResults -and (Test-Path -LiteralPath $testResultsPath)) {
-        Remove-Item -LiteralPath $testResultsPath
+    if ($shouldCheckTestResults) {
+        $testResultsDirectory = Split-Path -Path $testResultsPath -Parent
+        New-Item -Path $testResultsDirectory -ItemType Directory -Force | Out-Null
+        if (Test-Path -LiteralPath $testResultsPath) {
+            Remove-Item -LiteralPath $testResultsPath
+        }
     }
 
     Invoke-PSake -BuildFile $PSakeFile -TaskList $Task -NoLogo -Properties $Properties -Parameters $Parameters

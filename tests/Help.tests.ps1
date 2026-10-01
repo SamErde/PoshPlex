@@ -37,7 +37,10 @@ BeforeDiscovery {
 
 Describe 'Module exports' {
     BeforeAll {
-        $OutputModuleManifest = Join-Path -Path $env:BHBuildOutput -ChildPath "$env:BHProjectName.psd1"
+        $Manifest = Import-PowerShellDataFile -Path $env:BHPSModuleManifest
+        $OutputModuleDirectory = Join-Path -Path (Join-Path -Path $env:BHProjectPath -ChildPath 'Output') -ChildPath $env:BHProjectName
+        $OutputModuleVersionDirectory = Join-Path -Path $OutputModuleDirectory -ChildPath $Manifest.ModuleVersion
+        $OutputModuleManifest = Join-Path -Path $OutputModuleVersionDirectory -ChildPath "$env:BHProjectName.psd1"
         Import-Module -Name $OutputModuleManifest -Force -ErrorAction Stop
     }
 

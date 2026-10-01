@@ -35,6 +35,15 @@ BeforeDiscovery {
     ## To test, restart session.
 }
 
+Describe 'Module exports' {
+    It 'Exports at least one command for help validation' {
+        $ModuleCommands = @(
+            Get-Command -Module $env:BHProjectName -CommandType Cmdlet, Function
+        )
+        $ModuleCommands.Count | Should -BeGreaterThan 0
+    }
+}
+
 if (-not $Commands) {
     Describe 'Command help' {
         It 'Skips command help checks when the module exports no commands' -Skip {}
